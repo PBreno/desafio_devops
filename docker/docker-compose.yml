@@ -1,0 +1,32 @@
+services:
+  http-server-projeto-korp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: http-server
+    volumes:
+      - ../src:/var/www
+    ports:
+      - "8080:8080"
+    networks:
+      - korp-network
+    restart: always
+
+  nginx:
+    image: nginx:1.31-alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+    restart: always
+    volumes:
+      - ./nginx:/etc/http-server-projeto-korp.conf/conf.d/:ro
+    networks:
+      - korp-network
+    depends_on:
+      - http-server-projeto-korp
+
+
+networks:
+  korp-network:
+    name: korp-network
+    driver: bridge
