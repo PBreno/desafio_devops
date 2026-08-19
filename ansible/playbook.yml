@@ -3,7 +3,7 @@
   hosts: all
   become: yes
   vars:
-    project_dir: /opt/desafio_devops
+    project_dir: /tmp/desafio_devops
     docker_network: korp-network
 
   tasks:
@@ -15,6 +15,7 @@
           - curl
           - gnupg
           - git
+          - rsync
         update_cache: yes
 
     - name: Criar diretório para keyring do Docker
