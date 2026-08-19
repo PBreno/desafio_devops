@@ -14,8 +14,8 @@
           - ca-certificates
           - curl
           - gnupg
+          - python3-pip
           - git
-          - rsync
         update_cache: yes
 
     - name: Criar diretório para keyring do Docker
@@ -59,16 +59,12 @@
         state: directory
         mode: '0755'
 
-    - name: Sincronizar arquivos do projeto
-      synchronize:
+    # Usando o módulo 'copy' em vez de 'synchronize' para garantir a cópia das pastas
+    - name: Copiar todos os arquivos do projeto
+      copy:
         src: "{{ playbook_dir }}/../"
         dest: "{{ project_dir }}/"
-        delete: yes
-        rsync_opts:
-          - "--exclude=.git"
-          - "--exclude=ansible"
-          - "--exclude=src/vendor"
-      become: yes
+        mode: '0755'
 
     # ---------- Rede Docker ----------
     - name: Verificar se a rede Docker já existe
@@ -81,16 +77,10 @@
       command: docker network create {{ docker_network }}
       when: network_status.failed
 
-    # ---------- Build da imagem ----------
-    - name: Build da imagem http-server-projeto-korp
-      command: docker build -t http-server-projeto-korp:latest -f docker/Dockerfile ./src
-      args:
-        chdir: "{{ project_dir }}"
-      changed_when: false
-
-    # ---------- Subir ambiente ----------
-    - name: Subir stack com docker compose
-      command: docker compose -f docker/docker-compose.yml up -d
+    # ---------- Build e Subir ambiente ----------
+    # O docker compose up --build já constroi a imagem e sobe tudo automaticamente
+    - name: Subir stack e construir imagens com docker compose
+      command: docker compose -f docker/docker-compose.yml up -d --build
       args:
         chdir: "{{ project_dir }}"
 
