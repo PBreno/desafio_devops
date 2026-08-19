@@ -61,36 +61,38 @@
 
     - name: Sincronizar arquivos do projeto
       synchronize:
-        src: "../"
+        src: "{{ playbook_dir }}/../"
         dest: "{{ project_dir }}/"
         delete: yes
         rsync_opts:
           - "--exclude=.git"
           - "--exclude=ansible"
+          - "--exclude=src/vendor"
+      become: yes
 
     # ---------- Rede Docker ----------
+    - name: Verificar se a rede Docker já existe
+      command: docker network inspect {{ docker_network }}
+      register: network_status
+      ignore_errors: yes
+      changed_when: false
+
     - name: Criar rede Docker bridge
-      docker_network:
-        name: "{{ docker_network }}"
-        driver: bridge
-        state: present
+      command: docker network create {{ docker_network }}
+      when: network_status.failed
 
     # ---------- Build da imagem ----------
     - name: Build da imagem http-server-projeto-korp
-      docker_image:
-        name: http-server-projeto-korp
-        tag: latest
-        source: build
-        build:
-          path: "{{ project_dir }}/src"
-          dockerfile: "{{ project_dir }}/docker/Dockerfile"
-        state: present
+      command: docker build -t http-server-projeto-korp:latest -f docker/Dockerfile ./src
+      args:
+        chdir: "{{ project_dir }}"
+      changed_when: false
 
     # ---------- Subir ambiente ----------
     - name: Subir stack com docker compose
-      shell: "docker compose -f {{ project_dir }}/docker/docker-compose.yml up -d"
+      command: docker compose -f docker/docker-compose.yml up -d
       args:
-        chdir: "{{ project_dir }}/docker"
+        chdir: "{{ project_dir }}"
 
     - name: Aguardar serviços inicializarem
       pause:
