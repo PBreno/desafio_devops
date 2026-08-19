@@ -14,7 +14,6 @@
           - ca-certificates
           - curl
           - gnupg
-          - python3-pip
           - git
         update_cache: yes
 
@@ -51,12 +50,6 @@
         name: docker
         state: started
         enabled: yes
-
-    - name: Instalar bibliotecas Python para módulos Docker
-      pip:
-        name:
-          - docker
-          - requests
 
     # ---------- Copiar projeto ----------
     - name: Criar diretório do projeto
