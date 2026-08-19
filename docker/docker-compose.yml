@@ -1,3 +1,13 @@
+
+networks:
+  korp-network:
+    name: korp-network
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
 services:
   http-server-projeto-korp:
     build:
@@ -25,8 +35,36 @@ services:
     depends_on:
       - http-server-projeto-korp
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    networks:
+      - korp-network
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - http-server-projeto-korp
+    restart: always
 
-networks:
-  korp-network:
-    name: korp-network
-    driver: bridge
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    networks:
+      - korp-network
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: always
