@@ -1,24 +1,18 @@
 ---
-- name: Provisionamento completo do Projeto Korp
-  hosts: all
+- name: Provisionamento simplificado do Projeto Korp
+  hosts: localhost
   become: yes
   vars:
     project_dir: /tmp/desafio_devops
-    docker_network: korp-network
 
   tasks:
-    # ---------- Pré-requisitos ----------
-    - name: Instalar pacotes base
+    # ---------- 1. Instalação do Docker ----------
+    - name: Instalar dependencias base
       apt:
-        name:
-          - ca-certificates
-          - curl
-          - gnupg
-          - python3-pip
-          - git
+        name: [ca-certificates, curl, gnupg]
         update_cache: yes
 
-    - name: Criar diretório para keyring do Docker
+    - name: Criar diretorio para keyring do Docker
       file:
         path: /etc/apt/keyrings
         state: directory
@@ -30,66 +24,48 @@
         dest: /etc/apt/keyrings/docker.asc
         mode: '0644'
 
-    - name: Adicionar repositório do Docker
+    - name: Adicionar repositorio do Docker
       apt_repository:
         repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
         state: present
         update_cache: yes
 
-    - name: Instalar Docker e plugins
+    - name: Instalar Docker e Docker Compose
       apt:
-        name:
-          - docker-ce
-          - docker-ce-cli
-          - containerd.io
-          - docker-buildx-plugin
-          - docker-compose-plugin
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-compose-plugin]
         update_cache: yes
 
-    - name: Garantir que o serviço Docker está ativo
+    - name: Garantir que o Docker esta ativo
       service:
         name: docker
         state: started
         enabled: yes
 
-    # ---------- Copiar projeto ----------
-    - name: Criar diretório do projeto
+    # ---------- 2. Copiar Projeto ----------
+    - name: Criar diretorio do projeto
       file:
         path: "{{ project_dir }}"
         state: directory
         mode: '0755'
 
-    # Usando o módulo 'copy' em vez de 'synchronize' para garantir a cópia das pastas
-    - name: Copiar todos os arquivos do projeto
+    - name: Copiar arquivos do projeto
       copy:
         src: "{{ playbook_dir }}/../"
         dest: "{{ project_dir }}/"
         mode: '0755'
 
-    # ---------- Rede Docker ----------
-    - name: Verificar se a rede Docker já existe
-      command: docker network inspect {{ docker_network }}
-      register: network_status
-      ignore_errors: yes
-      changed_when: false
-
-    - name: Criar rede Docker bridge
-      command: docker network create {{ docker_network }}
-      when: network_status.failed
-
-    # ---------- Build e Subir ambiente ----------
-    # O docker compose up --build já constroi a imagem e sobe tudo automaticamente
-    - name: Subir stack e construir imagens com docker compose
+    # ---------- 3. Subir Ambiente ----------
+    - name: Fazer build e subir os containers com Docker Compose
       command: docker compose -f docker/docker-compose.yml up -d --build
       args:
         chdir: "{{ project_dir }}"
 
-    - name: Aguardar serviços inicializarem
+    - name: Aguardar servicos inicializarem
       pause:
         seconds: 15
 
-    # ---------- Validação ----------
-    - name: Validar endpoint /projeto-korp
+    # ---------- 4. Validacao ----------
+    - name: Validar endpoint /projeto-korp via HTTP
       uri:
         url: http://localhost/projeto-korp
         method: GET
@@ -100,6 +76,6 @@
       retries: 6
       delay: 5
 
-    - name: Exibir resposta do serviço no console
+    - name: Exibir resposta do servico no console
       debug:
         var: result.content
